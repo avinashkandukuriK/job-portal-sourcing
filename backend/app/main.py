@@ -14,8 +14,11 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.adapters import discover_all
 from app.api.adapters_routes import router as adapters_router
+from app.api.candidates_routes import router as candidates_router
 from app.api.job_orders_routes import router as job_orders_router
+from app.api.portal_runs_routes import router as portal_runs_router
 from app.api.search_routes import router as search_router
+from app.api.source_plan_routes import router as source_plan_router
 from app.config import get_settings
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s — %(message)s")
@@ -50,6 +53,9 @@ def create_app() -> FastAPI:
     app.include_router(adapters_router)
     app.include_router(search_router)
     app.include_router(job_orders_router)
+    app.include_router(source_plan_router)
+    app.include_router(portal_runs_router)
+    app.include_router(candidates_router)
 
     @app.get("/health")
     async def health() -> dict:

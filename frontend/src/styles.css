@@ -19,6 +19,7 @@ body {
 }
 
 button,
+select,
 textarea {
   font: inherit;
 }
@@ -196,6 +197,16 @@ h2 {
   color: #aa2626;
 }
 
+.warning-banner {
+  margin-bottom: 12px;
+  border: 1px solid #f2d99b;
+  border-radius: 8px;
+  background: #fff8e6;
+  padding: 12px 14px;
+  color: #755111;
+  font-weight: 700;
+}
+
 .muted {
   color: #687064;
 }
@@ -289,6 +300,123 @@ textarea:focus {
   margin-top: 18px;
 }
 
+.workforce {
+  margin-top: 18px;
+}
+
+.planner-actions {
+  display: flex;
+  align-items: end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.planner-actions label {
+  display: grid;
+  gap: 5px;
+  color: #687064;
+  font-size: 0.82rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+select {
+  min-height: 42px;
+  min-width: 92px;
+  border: 1px solid #d4dccd;
+  border-radius: 8px;
+  background: #fbfcf8;
+  color: #20251f;
+  padding: 0 12px;
+}
+
+.portal-layout,
+.portal-results,
+.candidate-grid {
+  display: grid;
+  gap: 12px;
+}
+
+.source-summary {
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+}
+
+.portal-row {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) minmax(220px, 1.1fr) minmax(180px, 0.9fr) auto;
+  align-items: center;
+  gap: 14px;
+  border-radius: 8px;
+  background: #f6f8f2;
+  padding: 14px;
+}
+
+.portal-row strong,
+.portal-row span,
+.portal-row a,
+.readiness small {
+  display: block;
+}
+
+.portal-row a {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 6px;
+  color: #315f7a;
+  font-size: 0.86rem;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.tag {
+  border-radius: 999px;
+  background: #e8efe0;
+  color: #3a4338;
+  padding: 6px 9px;
+  font-size: 0.8rem;
+  font-weight: 800;
+}
+
+.readiness {
+  display: grid;
+  gap: 7px;
+}
+
+.readiness small {
+  color: #687064;
+  line-height: 1.35;
+}
+
+.portal-results {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid #e4e9dd;
+}
+
+.nested-heading {
+  margin-bottom: 8px;
+}
+
+.portal-candidate {
+  grid-template-columns: 1fr 72px;
+}
+
+.portal-candidate b {
+  width: 64px;
+}
+
+.empty-state.compact {
+  min-height: 96px;
+}
+
 .adapter-table {
   display: grid;
   gap: 8px;
@@ -331,11 +459,16 @@ textarea:focus {
   }
 
   .nav-list {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 
   .status-strip,
   .content-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .portal-row,
+  .source-summary {
     grid-template-columns: 1fr;
   }
 }

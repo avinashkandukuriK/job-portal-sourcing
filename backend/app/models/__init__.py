@@ -8,6 +8,15 @@ from .pipeline import (
     Placement,
     Submission,
 )
+from .portal import (
+    PortalDefinition,
+    PortalRecommendation,
+    PortalRunCandidate,
+    PortalRunRequest,
+    PortalRunResponse,
+    SourcePlanRequest,
+    SourcePlanResponse,
+)
 from .search_result import AdapterRunStats, ScoredCandidate, SearchResult
 
 __all__ = [
@@ -22,4 +31,8 @@ __all__ = [
     # pipeline / placement / compliance
     "PipelineEntry", "Submission", "Placement", "ComplianceStatus",
     "PIPELINE_STAGES",
+    # workforce portals
+    "PortalDefinition", "PortalRecommendation", "PortalRunCandidate",
+    "PortalRunRequest", "PortalRunResponse", "SourcePlanRequest",
+    "SourcePlanResponse",
 ]
