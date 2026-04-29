@@ -1,6 +1,17 @@
-import { Activity, Database, Play, RefreshCw, Search, Server, Settings2 } from "lucide-react";
+import { Activity, Database, ExternalLink, Play, RefreshCw, Search, Server, Settings2, Users } from "lucide-react";
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { AdapterResponse, SearchResponse, apiBaseUrl, getAdapters, getHealth, runSearch } from "./api";
+import {
+  AdapterResponse,
+  PortalRunResponse,
+  SearchResponse,
+  SourcePlanResponse,
+  apiBaseUrl,
+  createSourcePlan,
+  getAdapters,
+  getHealth,
+  runPortalSearch,
+  runSearch,
+} from "./api";
 
 const sampleJd = `Forklift Operator needed in Albuquerque, NM.
 Pay Rate: $20/hr. Shift: 6:30 am - 2:30 pm.
@@ -17,7 +28,12 @@ export function App() {
   const [adapters, setAdapters] = useState<AdapterResponse[]>([]);
   const [loadingAdapters, setLoadingAdapters] = useState(true);
   const [searching, setSearching] = useState(false);
+  const [planning, setPlanning] = useState(false);
+  const [runningPortal, setRunningPortal] = useState<string | null>(null);
   const [result, setResult] = useState<SearchResponse | null>(null);
+  const [sourcePlan, setSourcePlan] = useState<SourcePlanResponse | null>(null);
+  const [portalRun, setPortalRun] = useState<PortalRunResponse | null>(null);
+  const [selectedState, setSelectedState] = useState("IL");
   const [error, setError] = useState<string | null>(null);
 
   const readyCount = useMemo(() => adapters.filter((adapter) => adapter.status === "ready").length, [adapters]);
@@ -55,6 +71,33 @@ export function App() {
     }
   }
 
+  async function handlePlanSources() {
+    setPlanning(true);
+    setError(null);
+    setSourcePlan(null);
+    setPortalRun(null);
+    try {
+      setSourcePlan(await createSourcePlan(jdText, selectedState));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Source planning failed");
+    } finally {
+      setPlanning(false);
+    }
+  }
+
+  async function handleRunPortal(portalId: string) {
+    setRunningPortal(portalId);
+    setError(null);
+    setPortalRun(null);
+    try {
+      setPortalRun(await runPortalSearch(jdText, selectedState, portalId));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Portal run failed");
+    } finally {
+      setRunningPortal(null);
+    }
+  }
+
   return (
     <main className="app-shell">
       <aside className="sidebar" aria-label="Workspace navigation">
@@ -73,6 +116,10 @@ export function App() {
           <a className="nav-item" href="#adapters">
             <Settings2 size={18} />
             Sources
+          </a>
+          <a className="nav-item" href="#workforce">
+            <Users size={18} />
+            Workforce
           </a>
           <a className="nav-item" href="#runtime">
             <Server size={18} />
@@ -173,6 +220,112 @@ export function App() {
             )}
           </section>
         </div>
+
+        <section className="panel workforce" id="workforce">
+          <div className="panel-heading">
+            <div>
+              <p className="caption">Free workforce portals</p>
+              <h2>Automated state portal sourcing</h2>
+            </div>
+            <div className="planner-actions">
+              <label>
+                State
+                <select value={selectedState} onChange={(event) => setSelectedState(event.target.value)}>
+                  <option value="CA">CA</option>
+                  <option value="IL">IL</option>
+                  <option value="FL">FL</option>
+                  <option value="IN">IN</option>
+                  <option value="MA">MA</option>
+                </select>
+              </label>
+              <button className="primary-button" type="button" onClick={handlePlanSources} disabled={planning || !jdText.trim()}>
+                <Search size={17} />
+                {planning ? "Planning" : "Plan sources"}
+              </button>
+            </div>
+          </div>
+
+          {sourcePlan ? (
+            <div className="portal-layout">
+              <div className="parsed source-summary">
+                <strong>{sourcePlan.parsed_jd.title}</strong>
+                <span>{sourcePlan.state || "No state selected"}</span>
+                <span>{sourcePlan.parsed_jd.required_skills.slice(0, 5).join(", ") || "No skills parsed"}</span>
+              </div>
+              {sourcePlan.message ? <div className="empty-state compact">{sourcePlan.message}</div> : null}
+              {sourcePlan.recommended_portals.map((item) => (
+                <article className="portal-row" key={item.portal.id}>
+                  <div>
+                    <strong>{item.portal.name}</strong>
+                    <span>{item.portal.state_name} workforce portal</span>
+                    <a href={item.portal.employer_url} target="_blank" rel="noreferrer">
+                      Employer portal <ExternalLink size={14} />
+                    </a>
+                  </div>
+                  <div className="tag-list">
+                    {item.search_terms.slice(0, 8).map((term) => (
+                      <span className="tag" key={term}>
+                        {term}
+                      </span>
+                    ))}
+                  </div>
+                  <div className="readiness">
+                    <span className={`status-pill ${item.automation_ready ? "ready" : "disabled_no_config"}`}>
+                      {item.automation_ready ? "ready" : "needs setup"}
+                    </span>
+                    <small>{item.readiness_messages.join(" ")}</small>
+                  </div>
+                  <button
+                    className="primary-button"
+                    type="button"
+                    onClick={() => handleRunPortal(item.portal.id)}
+                    disabled={runningPortal === item.portal.id}
+                  >
+                    <Play size={17} />
+                    {runningPortal === item.portal.id ? "Running" : "Run portal search"}
+                  </button>
+                </article>
+              ))}
+            </div>
+          ) : (
+            <div className="empty-state compact">Plan free sources to select a state workforce portal for this JD.</div>
+          )}
+
+          {portalRun ? (
+            <div className="portal-results">
+              <div className="panel-heading nested-heading">
+                <div>
+                  <p className="caption">Portal run</p>
+                  <h2>
+                    {portalRun.portal.name}: {statusLabel(portalRun.status)}
+                  </h2>
+                </div>
+                <span className={`status-pill ${portalRun.status === "completed" ? "ready" : "disabled_no_config"}`}>
+                  {portalRun.candidates_saved}/{portalRun.candidates_found} saved
+                </span>
+              </div>
+              {portalRun.warnings.length ? <div className="warning-banner">{portalRun.warnings.join(" ")}</div> : null}
+              {portalRun.error ? <div className="error-banner">{portalRun.error}</div> : null}
+              {portalRun.candidates.length ? (
+                <div className="candidate-grid">
+                  {portalRun.candidates.map((item) => (
+                    <article className="candidate-row portal-candidate" key={item.candidate.source_id}>
+                      <div>
+                        <strong>{item.candidate.name}</strong>
+                        <span>{item.candidate.current_title || item.candidate.source}</span>
+                        <span>{item.candidate.location || "Location unavailable"}</span>
+                        <span>{item.candidate.contact.email || "No email"} | {item.candidate.contact.phone || "No phone"}</span>
+                      </div>
+                      <b>{item.saved ? "Saved" : "Hold"}</b>
+                    </article>
+                  ))}
+                </div>
+              ) : (
+                <div className="empty-state compact">No candidates returned. If this says needs setup, add portal credentials and enable the live connector.</div>
+              )}
+            </div>
+          ) : null}
+        </section>
 
         <section className="panel adapters" id="adapters">
           <div className="panel-heading">
