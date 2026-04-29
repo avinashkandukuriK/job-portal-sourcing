@@ -1,0 +1,39 @@
+services:
+  - type: web
+    name: sourcing-backend
+    runtime: python
+    plan: free
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: LOG_LEVEL
+        value: INFO
+      - key: CORS_ORIGINS
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_KEY
+        sync: false
+      - key: SUPABASE_SERVICE_KEY
+        sync: false
+      - key: GITHUB_TOKEN
+        sync: false
+      - key: STACKEXCHANGE_KEY
+        sync: false
+      - key: APOLLO_API_KEY
+        sync: false
+      - key: PROXYCURL_API_KEY
+        sync: false
+      - key: INDEED_PUBLISHER_ID
+        sync: false
+      - key: DICE_API_KEY
+        sync: false
+      - key: MONSTER_API_KEY
+        sync: false
+      - key: ZIPRECRUITER_API_KEY
+        sync: false
