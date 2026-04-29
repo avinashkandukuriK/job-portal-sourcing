@@ -12,15 +12,17 @@ This repo is prepared for the flow:
 
 ## Current Repo State
 
-The backend is present and Render-ready. The `frontend/` folder is not present in this workspace yet, so Vercel deployment can be completed after the frontend app is added.
+The backend is Render-ready. The frontend is a Vite React app in `frontend/` and is ready for Vercel import.
 
 ## GitHub
 
-Push the repository to GitHub. The backend CI workflow runs on pushes and pull requests to `main`:
+Push the repository to GitHub. The CI workflow runs on pushes and pull requests to `main`:
 
 - `ruff` lint
 - `mypy` type check
 - `pytest` with coverage
+- frontend lint
+- frontend build
 
 ## Supabase
 
@@ -86,12 +88,22 @@ Expected response:
 
 ## Vercel Frontend
 
-After the frontend app exists, deploy the `frontend/` folder to Vercel.
+Deploy the `frontend/` folder to Vercel.
+
+Vercel settings:
+
+```text
+Framework Preset: Vite
+Root Directory: frontend
+Build Command: npm run build
+Output Directory: dist
+Install Command: npm ci
+```
 
 Set the backend URL in Vercel using the frontend variable name used by the app. For Vite, use:
 
 ```text
-VITE_API_BASE_URL=https://your-render-service.onrender.com
+VITE_API_BASE_URL=https://sourcing-backend-s6dr.onrender.com
 ```
 
 Also update Render:
@@ -111,6 +123,6 @@ CORS_ORIGINS=https://your-vercel-app.vercel.app
 Backend-only smoke test:
 
 ```bash
-curl https://your-render-service.onrender.com/health
-curl https://your-render-service.onrender.com/api/adapters
+curl https://sourcing-backend-s6dr.onrender.com/health
+curl https://sourcing-backend-s6dr.onrender.com/api/adapters
 ```

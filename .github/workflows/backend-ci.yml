@@ -1,4 +1,4 @@
-name: Backend CI
+name: CI
 
 on:
   push:
@@ -42,3 +42,31 @@ jobs:
           SUPABASE_KEY: ""
           SUPABASE_SERVICE_KEY: ""
         run: python -m pytest --cov=app --cov-report=term-missing --cov-fail-under=35
+
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build
+        env:
+          VITE_API_BASE_URL: https://sourcing-backend-s6dr.onrender.com
+        run: npm run build
