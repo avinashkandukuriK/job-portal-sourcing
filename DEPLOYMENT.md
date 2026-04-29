@@ -50,6 +50,7 @@ The repo includes `render.yaml` for a Render Blueprint.
 Required Render env vars:
 
 ```text
+PYTHON_VERSION=3.11.11
 APP_ENV=production
 LOG_LEVEL=INFO
 CORS_ORIGINS=https://your-vercel-app.vercel.app
