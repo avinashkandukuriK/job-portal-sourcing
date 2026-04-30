@@ -279,10 +279,14 @@ export function App() {
                     className="primary-button"
                     type="button"
                     onClick={() => handleRunPortal(item.portal.id)}
-                    disabled={runningPortal === item.portal.id}
+                    disabled={!item.automation_ready || runningPortal === item.portal.id}
                   >
                     <Play size={17} />
-                    {runningPortal === item.portal.id ? "Running" : "Run portal search"}
+                    {!item.automation_ready
+                      ? "Setup required"
+                      : runningPortal === item.portal.id
+                        ? "Running"
+                        : "Run portal search"}
                   </button>
                 </article>
               ))}

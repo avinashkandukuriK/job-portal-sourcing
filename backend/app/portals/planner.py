@@ -1,12 +1,11 @@
 """Build free-mode source plans for state workforce portals."""
 from __future__ import annotations
 
-import os
-
 from app.core import parse_jd
 from app.models import JobDescription, ParsedJD
 from app.models.portal import PortalRecommendation, SourcePlanRequest, SourcePlanResponse
 
+from .connectors import build_connector
 from .directory import portals_for_state
 
 ROLE_EXPANSIONS: dict[str, list[str]] = {
@@ -41,15 +40,6 @@ def generate_search_terms(parsed_jd: ParsedJD, *, max_terms: int = 10) -> list[s
     return terms
 
 
-def _readiness_messages(env_vars: list[str]) -> tuple[bool, list[str]]:
-    if not env_vars:
-        return True, ["No credentials required."]
-    missing = [name for name in env_vars if not os.getenv(name)]
-    if missing:
-        return False, [f"Missing portal credential env vars: {', '.join(missing)}"]
-    return True, ["Credential env vars configured."]
-
-
 def build_source_plan(request: SourcePlanRequest) -> SourcePlanResponse:
     parsed = parse_jd(JobDescription(text=request.jd_text, title_hint=request.title_hint))
     state = request.state or parsed.state
@@ -59,14 +49,14 @@ def build_source_plan(request: SourcePlanRequest) -> SourcePlanResponse:
 
     recommendations: list[PortalRecommendation] = []
     for portal in portals:
-        ready, messages = _readiness_messages(portal.credential_env_vars)
+        readiness = build_connector(portal).check_readiness()
         recommendations.append(
             PortalRecommendation(
                 portal=portal,
                 search_terms=search_terms,
                 suggested_filters=portal.suggested_filters,
-                automation_ready=ready and portal.automation_mode != "disabled",
-                readiness_messages=messages,
+                automation_ready=readiness.ready and portal.automation_mode != "disabled",
+                readiness_messages=readiness.messages,
                 capture_guidance=portal.usage_guidance,
             )
         )
