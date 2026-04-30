@@ -30,6 +30,8 @@ yarn-debug.log*
 yarn-error.log*
 
 # IDE
+.worktrees/
+worktrees/
 .vscode/
 .idea/
 *.swp

@@ -10,7 +10,7 @@ import logging
 from datetime import datetime
 from typing import Any, Iterable, Optional
 
-from app.models import Candidate, JobOrder, ParsedJD
+from app.models import Candidate, JobOrder, ParsedJD, PortalRunResponse
 
 from .supabase_client import get_supabase
 
@@ -170,6 +170,84 @@ def _row_to_candidate(r: dict[str, Any]) -> Candidate:
     )
 
 
+async def list_candidates(*, limit: int = 50) -> list[Candidate]:
+    sb = get_supabase()
+    if sb is None:
+        return []
+    try:
+        res = sb.table("candidates").select("*").is_("archived_at", "null").order("updated_at", desc=True).limit(limit).execute()
+        return [_row_to_candidate(r) for r in (res.data or [])]
+    except Exception as exc:  # noqa: BLE001
+        logger.exception("Candidate list failed: %s", exc)
+        return []
+
+
+async def get_candidate(candidate_id: str) -> Optional[Candidate]:
+    sb = get_supabase()
+    if sb is None:
+        return None
+    try:
+        res = sb.table("candidates").select("*").eq("id", candidate_id).limit(1).execute()
+        if res.data:
+            return _row_to_candidate(res.data[0])
+    except Exception as exc:  # noqa: BLE001
+        logger.exception("Candidate fetch failed: %s", exc)
+    return None
+
+
+def _candidate_source_to_row(
+    *,
+    candidate_id: str,
+    source_type: str,
+    source_name: str,
+    source_state: Optional[str],
+    source_url: Optional[str],
+    capture_method: str,
+    contact_visibility: str,
+    consent_note: Optional[str],
+) -> dict[str, Any]:
+    return {
+        "candidate_id": candidate_id,
+        "source_type": source_type,
+        "source_name": source_name,
+        "source_state": source_state,
+        "source_url": source_url,
+        "capture_method": capture_method,
+        "contact_visibility": contact_visibility,
+        "consent_note": consent_note,
+    }
+
+
+async def save_candidate_source(
+    *,
+    candidate_id: str,
+    source_type: str,
+    source_name: str,
+    source_state: Optional[str],
+    source_url: Optional[str],
+    capture_method: str = "automated_portal",
+    contact_visibility: str = "visible_in_employer_portal",
+    consent_note: Optional[str] = None,
+) -> None:
+    sb = get_supabase()
+    if sb is None:
+        return
+    row = _candidate_source_to_row(
+        candidate_id=candidate_id,
+        source_type=source_type,
+        source_name=source_name,
+        source_state=source_state,
+        source_url=source_url,
+        capture_method=capture_method,
+        contact_visibility=contact_visibility,
+        consent_note=consent_note,
+    )
+    try:
+        sb.table("candidate_sources").insert(row).execute()
+    except Exception as exc:  # noqa: BLE001
+        logger.exception("Candidate source save failed: %s", exc)
+
+
 # ============================================================================
 # Job orders
 # ============================================================================
@@ -301,3 +379,99 @@ async def save_search_results(
         sb.table("search_results").insert(rows).execute()
     except Exception as exc:  # noqa: BLE001
         logger.exception("Save search results failed: %s", exc)
+
+
+# ============================================================================
+# Workforce portal runs
+# ============================================================================
+
+def _portal_run_to_row(run: PortalRunResponse, *, raw_jd_text: str) -> dict[str, Any]:
+    return {
+        "portal_id": run.portal.id,
+        "portal_name": run.portal.name,
+        "state": run.portal.state,
+        "raw_jd_text": raw_jd_text,
+        "parsed_jd": run.parsed_jd.model_dump(mode="json"),
+        "search_terms": run.search_terms,
+        "status": run.status,
+        "candidates_found": run.candidates_found,
+        "candidates_saved": run.candidates_saved,
+        "candidates_skipped": run.candidates_skipped,
+        "warnings": run.warnings,
+        "error_message": run.error,
+        "completed_at": datetime.utcnow().isoformat() if run.status in {"completed", "failed", "not_ready"} else None,
+    }
+
+
+async def create_portal_run(run: PortalRunResponse, *, raw_jd_text: str) -> Optional[str]:
+    sb = get_supabase()
+    if sb is None:
+        return None
+    row = _portal_run_to_row(run, raw_jd_text=raw_jd_text)
+    try:
+        res = sb.table("portal_runs").insert(row).execute()
+        if res.data:
+            return res.data[0]["id"]
+    except Exception as exc:  # noqa: BLE001
+        logger.exception("Portal run create failed: %s", exc)
+    return None
+
+
+async def update_portal_run(run_id: str, run: PortalRunResponse, *, raw_jd_text: str) -> None:
+    sb = get_supabase()
+    if sb is None:
+        return
+    row = _portal_run_to_row(run, raw_jd_text=raw_jd_text)
+    try:
+        sb.table("portal_runs").update(row).eq("id", run_id).execute()
+    except Exception as exc:  # noqa: BLE001
+        logger.exception("Portal run update failed: %s", exc)
+
+
+async def save_portal_run_candidate(
+    *,
+    portal_run_id: str,
+    candidate_id: Optional[str],
+    source_profile_url: Optional[str],
+    candidate_snapshot: dict[str, Any],
+    saved: bool,
+    skipped_reason: Optional[str] = None,
+) -> None:
+    sb = get_supabase()
+    if sb is None:
+        return
+    try:
+        sb.table("portal_run_candidates").insert({
+            "portal_run_id": portal_run_id,
+            "candidate_id": candidate_id,
+            "source_profile_url": source_profile_url,
+            "candidate_snapshot": candidate_snapshot,
+            "saved": saved,
+            "skipped_reason": skipped_reason,
+        }).execute()
+    except Exception as exc:  # noqa: BLE001
+        logger.exception("Portal run candidate save failed: %s", exc)
+
+
+async def list_portal_runs(*, limit: int = 25) -> list[dict[str, Any]]:
+    sb = get_supabase()
+    if sb is None:
+        return []
+    try:
+        res = sb.table("portal_runs").select("*").order("created_at", desc=True).limit(limit).execute()
+        return res.data or []
+    except Exception as exc:  # noqa: BLE001
+        logger.exception("Portal run list failed: %s", exc)
+        return []
+
+
+async def get_portal_run(portal_run_id: str) -> Optional[dict[str, Any]]:
+    sb = get_supabase()
+    if sb is None:
+        return None
+    try:
+        res = sb.table("portal_runs").select("*").eq("id", portal_run_id).limit(1).execute()
+        return (res.data or [None])[0]
+    except Exception as exc:  # noqa: BLE001
+        logger.exception("Portal run fetch failed: %s", exc)
+        return None
